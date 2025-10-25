@@ -15,54 +15,49 @@ const handleMerge = async () => {
   setIsProcessing(true);
 
   try {
-    // تحويل الملفات إلى base64 بشكل صحيح
-    const filesBase64 = await Promise.all(
-      files.map(file => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve({
-          name: file.name,
-          base64: e.target.result.split(',')[1]
-        });
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      }))
-    );
-
-    console.log('Sending files to merge:', filesBase64.length);
-
-    const response = await fetch('/api/merge-pdf', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ files: filesBase64 })
-    });
-
-    const result = await response.json();
-    console.log('Merge result:', result);
-
-    if (result.success) {
-      // تنزيل الملف المدمج
+    // حل مؤقت: دمج يدوي بسيط
+    if (files.length === 1) {
+      // إذا كان ملف واحد، حمله مباشرة
       const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${result.pdf}`;
-      link.download = `merged-${Date.now()}.pdf`;
-      document.body.appendChild(link);
+      link.href = URL.createObjectURL(files[0]);
+      link.download = 'merged.pdf';
       link.click();
-      document.body.removeChild(link);
-      
-      alert(`✅ تم دمج ${files.length} ملف بنجاح! (${result.pageCount} صفحة)`);
+      URL.revokeObjectURL(link.href);
     } else {
-      alert(`❌ فشل في دمج الملفات: ${result.error}`);
+      // إذا كان أكثر من ملف، استخدم API
+      const filesBase64 = await Promise.all(
+        files.map(file => new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve({
+            name: file.name,
+            base64: e.target.result.split(',')[1]
+          });
+          reader.readAsDataURL(file);
+        }))
+      );
+
+      const response = await fetch('/api/merge-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: filesBase64 })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${result.pdf}`;
+        link.download = `merged-${Date.now()}.pdf`;
+        link.click();
+        alert(result.message || 'تم الدمج بنجاح!');
+      }
     }
   } catch (error) {
-    console.error('Merge error:', error);
-    alert('❌ حدث خطأ أثناء المعالجة: ' + error.message);
+    alert('❌ حدث خطأ: ' + error.message);
   } finally {
     setIsProcessing(false);
     setFiles([]);
-    // مسح حقل الرفع
-    const fileInput = document.getElementById('file-input');
-    if (fileInput) fileInput.value = '';
+    document.getElementById('file-input').value = '';
   }
 };
 
