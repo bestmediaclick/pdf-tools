@@ -9,26 +9,50 @@ export default function MergePDF() {
     setFiles(selectedFiles);
   };
 
-  const handleMerge = async () => {
-    if (files.length === 0) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      // محاكاة عملية المعالجة
-      setTimeout(() => {
-        setIsProcessing(false);
-        alert(`✅ تم دمج ${files.length} ملف بنجاح!\n\nسيتم تنزيل الملف المدمج قريباً...`);
-        
-        // تنظيف القائمة
-        setFiles([]);
-        document.getElementById('file-input').value = '';
-      }, 2000);
-    } catch (error) {
-      setIsProcessing(false);
-      alert('❌ حدث خطأ أثناء المعالجة');
+const handleMerge = async () => {
+  if (files.length === 0) return;
+  
+  setIsProcessing(true);
+
+  try {
+    // تحويل الملفات إلى base64
+    const filesBase64 = await Promise.all(
+      files.map(file => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve({
+          name: file.name,
+          base64: e.target.result.split(',')[1]
+        });
+        reader.readAsDataURL(file);
+      }))
+    );
+
+    // إرسال لـ API
+    const response = await fetch('/api/merge-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: filesBase64 })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // تنزيل الملف المدمج
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${result.pdf}`;
+      link.download = 'merged.pdf';
+      link.click();
+    } else {
+      alert('فشل في دمج الملفات');
     }
-  };
+  } catch (error) {
+    alert('حدث خطأ أثناء المعالجة');
+  } finally {
+    setIsProcessing(false);
+    setFiles([]);
+    document.getElementById('file-input').value = '';
+  }
+};
 
   return (
     <div style={{ 
