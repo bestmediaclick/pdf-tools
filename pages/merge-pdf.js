@@ -4,10 +4,11 @@ export default function MergePDF() {
   const [files, setFiles] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFileUpload = (event) => {
-    const selectedFiles = Array.from(event.target.files);
-    setFiles(selectedFiles);
-  };
+const handleFileUpload = (event) => {
+  const selectedFiles = Array.from(event.target.files);
+  console.log('Selected files:', selectedFiles.length); // للتصحيح
+  setFiles(selectedFiles);
+};
 
 const handleMerge = async () => {
   if (files.length === 0) return;
@@ -78,15 +79,15 @@ const handleMerge = async () => {
         borderRadius: '10px',
         margin: '30px 0'
       }}>
-        <input 
-          id="file-input"
-          type="file" 
-          multiple 
-          accept=".pdf" 
-          onChange={handleFileUpload}
-          style={{ marginBottom: '20px' }}
-          disabled={isProcessing}
-        />
+<input 
+  id="file-input"
+  type="file" 
+  multiple  // ⬅️ هذا مهم لاختيار multiple files
+  accept=".pdf" 
+  onChange={handleFileUpload}
+  style={{ marginBottom: '20px' }}
+  disabled={isProcessing}
+/>
         <p>اسحب وأفلت الملفات أو انقر للاختيار</p>
         <p style={{ fontSize: '14px', color: '#999' }}>حد أقصى 5 ملفات - 10MB لكل ملف</p>
       </div>
