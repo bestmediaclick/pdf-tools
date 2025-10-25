@@ -15,42 +15,54 @@ const handleMerge = async () => {
   setIsProcessing(true);
 
   try {
-    // تحويل الملفات إلى base64
+    // تحويل الملفات إلى base64 بشكل صحيح
     const filesBase64 = await Promise.all(
-      files.map(file => new Promise((resolve) => {
+      files.map(file => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => resolve({
           name: file.name,
           base64: e.target.result.split(',')[1]
         });
+        reader.onerror = reject;
         reader.readAsDataURL(file);
       }))
     );
 
-    // إرسال لـ API
+    console.log('Sending files to merge:', filesBase64.length);
+
     const response = await fetch('/api/merge-pdf', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ files: filesBase64 })
     });
 
     const result = await response.json();
+    console.log('Merge result:', result);
 
     if (result.success) {
       // تنزيل الملف المدمج
       const link = document.createElement('a');
       link.href = `data:application/pdf;base64,${result.pdf}`;
-      link.download = 'merged.pdf';
+      link.download = `merged-${Date.now()}.pdf`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      
+      alert(`✅ تم دمج ${files.length} ملف بنجاح! (${result.pageCount} صفحة)`);
     } else {
-      alert('فشل في دمج الملفات');
+      alert(`❌ فشل في دمج الملفات: ${result.error}`);
     }
   } catch (error) {
-    alert('حدث خطأ أثناء المعالجة');
+    console.error('Merge error:', error);
+    alert('❌ حدث خطأ أثناء المعالجة: ' + error.message);
   } finally {
     setIsProcessing(false);
     setFiles([]);
-    document.getElementById('file-input').value = '';
+    // مسح حقل الرفع
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) fileInput.value = '';
   }
 };
 
